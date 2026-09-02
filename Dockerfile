@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# Production image for a Rhino v4 app (client/ + server/) on a container host.
-# The React client is compiled here and served by Rails out of server/public, so
-# the product runs as a single web process on one origin. That is what the
-# generated client already expects: vite proxies /api only in development, and
-# rack-cors is not enabled on the server.
+# Production image for a Rhino v4 app (client/ + server/) on Heroku's container
+# stack. The React client is compiled here and served by Rails out of
+# server/public, so the product runs as a single web dyno on one origin. That is
+# what the generated client already expects: vite proxies /api only in
+# development, and rack-cors is not enabled on the server.
 
 ARG RUBY_VERSION=3.4.4
 ARG NODE_VERSION=22
@@ -84,11 +84,6 @@ RUN groupadd --system --gid 1000 rails && \
     chown -R rails:rails log tmp storage
 USER 1000:1000
 
-# The host assigns $PORT at runtime, so bind it here rather than baking a port in.
-#
-# Schema work runs at boot rather than in a separate release step: Render's free
-# tier has no one-off jobs, so there is nowhere else to put it. All three are
-# idempotent, so re-running them on every restart is safe — db:migrate is a
-# no-op once applied, solid:load_missing_schemas only loads what is absent, and
-# db:seed is written to be re-runnable.
-CMD ["sh", "-c", "./bin/rails db:migrate solid:load_missing_schemas db:seed && ./bin/rails server -b 0.0.0.0 -p ${PORT:-3000}"]
+# Heroku assigns $PORT at runtime, so bind it here rather than baking a port in.
+# Migrations run in the heroku.yml release phase, not at boot.
+CMD ["sh", "-c", "./bin/rails server -b 0.0.0.0 -p ${PORT:-3000}"]

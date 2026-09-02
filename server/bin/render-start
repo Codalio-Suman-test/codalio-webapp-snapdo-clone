@@ -1,0 +1,15 @@
+#!/bin/sh
+# Boot sequence for Render, which has no release phase on the instance types we use.
+#
+# Heroku runs schema work from heroku.yml's release stage, so the shared Dockerfile's
+# CMD only starts the server. Render has to do both, and its start command cannot
+# express it: Render splits the configured command on whitespace and execs it directly,
+# so an inline "a && b" hands "&&" to the first program as an argument. Keeping the
+# sequence in a script means the start command stays two plain tokens.
+#
+# All three tasks are idempotent, so re-running them on every restart is safe.
+set -e
+
+./bin/rails db:migrate solid:load_missing_schemas db:seed
+
+exec ./bin/rails server -b 0.0.0.0 -p "${PORT:-3000}"
